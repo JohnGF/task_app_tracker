@@ -1,0 +1,7 @@
+<svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Top Left Button 150x50 -->
+  <rect x="0" y="0" width="150" height="50" fill="#4CAF50" rx="10" ry="10" />
+
+  <!-- Top Right Banner 150x50 -->
+  <rect x="150" y="0" width="150" height="50" fill="#FFC107" />
+</svg>
