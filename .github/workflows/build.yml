@@ -1,4 +1,4 @@
-name: Build Windows App
+name: Build Cross-Platform App
 
 on:
   push:
@@ -10,7 +10,6 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-
     steps:
     - uses: actions/checkout@v4
 
@@ -26,7 +25,7 @@ jobs:
       uses: subosito/flutter-action@v2
       with:
         channel: 'stable'
-        flutter-version: '3.19.0' # Or any stable version you prefer
+        flutter-version: '3.19.0'
         cache: true
 
     - name: Install Rust-Flutter Bridge Codegen
@@ -52,3 +51,104 @@ jobs:
       with:
         name: chore-sync-windows-app
         path: chore_sync_app/build/windows/x64/runner/Release/*
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Linux build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang cmake git ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "chore_sync_app/rust"
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+        flutter-version: '3.19.0'
+        cache: true
+
+    - name: Install Rust-Flutter Bridge Codegen
+      run: cargo install flutter_rust_bridge_codegen
+
+    - name: Install dependencies
+      working-directory: ./chore_sync_app
+      run: flutter pub get
+
+    - name: Generate Rust bindings
+      working-directory: ./chore_sync_app
+      run: flutter_rust_bridge_codegen generate
+
+    - name: Enable Linux desktop build
+      run: flutter config --enable-linux-desktop
+
+    - name: Build Linux Executable
+      working-directory: ./chore_sync_app
+      run: flutter build linux --release
+
+    - name: Upload Linux Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: chore-sync-linux-app
+        path: chore_sync_app/build/linux/x64/release/bundle/*
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Set up Rust with Android targets
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "chore_sync_app/rust"
+
+    - name: Install cargo-ndk
+      run: cargo install cargo-ndk
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+        flutter-version: '3.19.0'
+        cache: true
+
+    - name: Install Rust-Flutter Bridge Codegen
+      run: cargo install flutter_rust_bridge_codegen
+
+    - name: Install dependencies
+      working-directory: ./chore_sync_app
+      run: flutter pub get
+
+    - name: Generate Rust bindings
+      working-directory: ./chore_sync_app
+      run: flutter_rust_bridge_codegen generate
+
+    - name: Build Android APK
+      working-directory: ./chore_sync_app
+      run: flutter build apk --release
+
+    - name: Upload Android Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: chore-sync-android-app
+        path: chore_sync_app/build/app/outputs/flutter-apk/app-release.apk
