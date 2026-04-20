@@ -1,0 +1,54 @@
+name: Build Windows App
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "chore_sync_app/rust"
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+        flutter-version: '3.19.0' # Or any stable version you prefer
+        cache: true
+
+    - name: Install Rust-Flutter Bridge Codegen
+      run: cargo install flutter_rust_bridge_codegen
+
+    - name: Install dependencies
+      working-directory: ./chore_sync_app
+      run: flutter pub get
+
+    - name: Generate Rust bindings
+      working-directory: ./chore_sync_app
+      run: flutter_rust_bridge_codegen generate
+
+    - name: Enable Windows desktop build
+      run: flutter config --enable-windows-desktop
+
+    - name: Build Windows Executable
+      working-directory: ./chore_sync_app
+      run: flutter build windows --release
+
+    - name: Upload Windows Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: chore-sync-windows-app
+        path: chore_sync_app/build/windows/x64/runner/Release/*
